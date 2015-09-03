@@ -205,7 +205,7 @@ def _find_include_strings(obj):
     return include_strings
 
 
-def scad_render(scad_object, file_header=''):
+def scad_render(scad_object, file_header='', variables=''):
     # Make this object the root of the tree
     root = scad_object
 
@@ -216,7 +216,7 @@ def scad_render(scad_object, file_header=''):
     # and render the string
     includes = ''.join(include_strings) + "\n"
     scad_body = root._render()
-    return file_header + includes + scad_body
+    return file_header + str(variables) + includes + scad_body
 
 
 def scad_render_animated(func_to_animate, steps=20, back_and_forth=True, filepath=None, file_header=''):
@@ -286,8 +286,9 @@ def scad_render_animated_file(func_to_animate, steps=20, back_and_forth=True,
     return _write_code_to_file(rendered_string, filepath, include_orig_code)
 
 
-def scad_render_to_file(scad_object, filepath=None, file_header='', include_orig_code=True):
-    rendered_string = scad_render(scad_object, file_header)
+def scad_render_to_file(scad_object, filepath=None, file_header='',
+                        include_orig_code=True, variables=None):
+    rendered_string = scad_render(scad_object, file_header, variables)
     return _write_code_to_file(rendered_string, filepath, include_orig_code)
 
 
@@ -670,6 +671,50 @@ class IncludedOpenSCADObject(OpenSCADObject):
         # No loadable SCAD file was found in sys.path.  Raise an error
         raise ValueError("Unable to find included SCAD file: "
                          "%(include_file_path)s in sys.path" % vars())
+
+
+class VarCollection(list):
+
+    _vars_dict = None
+
+    def __getattr__(self, identifier):
+        if not self._vars_dict:
+            self._vars_dict = dict([(a.identifier, a) for a in self])
+        if identifier not in self._vars_dict:
+            raise AttributeError('No such variable defined: %s' % identifier)
+        return self._vars_dict[identifier]
+
+    def __repr__(self):
+        return ''.join([a.declaration for a in self])
+
+
+class Variable(object):
+
+    def __init__(self, identifier, expr, comment, suffix_comment):
+        self.expr = expr
+        self.identifier = identifier
+        self.comment = comment
+        self.suffix_comment = suffix_comment
+        decl_pattern = '\n%(identifier)s = %(expr)s;'
+        if self.comment:
+            decl_pattern = '\n\n//%(comment)s' + decl_pattern
+        if self.suffix_comment:
+            decl_pattern = decl_pattern + ' // %(suffix_comment)s'
+        self.declaration = decl_pattern % self.__dict__
+
+    def __repr__(self):
+        return self.identifier
+
+class VarExpression(object):
+    pass
+
+
+def var(expr, identifier, comment=None, end_comment=None):
+    return Variable(expr, identifier, comment, end_comment)
+
+
+def variables(*args):
+    return VarCollection(args)
 
 
 def calling_module(stack_depth=2):

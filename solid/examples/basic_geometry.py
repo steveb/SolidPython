@@ -18,14 +18,17 @@ def basic_geometry():
 
     # left_piece uses standard OpenSCAD grammar (note the commas between
     # block elements; OpenSCAD doesn't require this)
+    tube_h= var('15', 'tube_h', 'Height of the tube', '[10:100]')
+    tube_hole_h= var('tube_h + 1', 'tube_hole_h')
+
     left_piece =  union()(
                         translate([-15, 0, 0])(
                             cube([10, 5, 3], center=True)
                         ),
                         translate([-10, 0, 0])(
                             difference()(
-                                cylinder(r=5, h=15, center=True),
-                                cylinder(r=4, h=16, center=True)
+                                cylinder(r=5, h=tube_h, center=True),
+                                cylinder(r=4, h=tube_hole_h, center=True)
                             )
                         )
                     )
@@ -35,7 +38,7 @@ def basic_geometry():
     # solid.utils also defines up(), down(), left(), right(), forward(), and back()
     # for common transforms.
     right_piece = right(15)(cube([10, 5, 3], center=True))
-    cyl = cylinder(r=5, h=15, center=True) - cylinder(r=4, h=16, center=True)
+    cyl = cylinder(r=5, h=tube_h, center=True) - cylinder(r=4, h=tube_hole_h, center=True)
     right_piece += right(10)(cyl)
 
     return union()(left_piece, right_piece)
